@@ -1,0 +1,20 @@
+{
+  "name": "DojoSocketIOServer",
+  "version": "1.0.0",
+  "scripts": {
+    "start:server": "DEBUG=server:* node $NODE_DEBUG_OPTION src/index.js "
+  },
+  "dependencies": {
+    "@types/mongodb": "^3.1.9",
+    "debug": "^4.1.0",
+    "module-alias": "^2.1.0",
+    "socket.io": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/socket.io": "^1.4.33"
+  },
+  "_moduleAliases": {
+    "@server": "./",
+  }
+}

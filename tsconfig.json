@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "es2017",
+    "baseUrl": ".",
+    "sourceMap": true,
+    "paths": {
+      "@server/*": [ "./*" ]
+    }
+  }
+}
