@@ -1,6 +1,3 @@
-/**
- * User chat model
- */
 import {Server} from "@server/src/core";
 import SocketManager from "@server/src/core/utils/socket";
 import {Dispatcher} from "@server/src/core/utils/events/dispatcher";
@@ -8,11 +5,19 @@ import {UserInformations} from "@server/src/core/user/userInformations";
 import {EventWrapper} from "@server/src/core/utils/events/eventWrapper";
 import {UserDisconnectedMessage} from "@server/src/core/models/packets/UserDisconnectedMessage";
 
+/**
+ * Classe permettant de gérer toute les actions/informations d'un utilisateur connecté
+ */
 export class User extends Dispatcher {
+    // Les informations sur l'utilisateur
     public userInformations: UserInformations;
+    // L'accés aux données du server
     private server: Server;
+    // Le socket entre ce model utilisateur server et celui client
     private socket: SocketManager;
+    // L'ecouteur Utilisateur
     private wrapperUser: EventWrapper;
+    // L'ecouteur Server
     private wrapperServer: EventWrapper;
 
     constructor(server: Server, socket: SocketManager, userInformations: UserInformations) {
@@ -25,6 +30,9 @@ export class User extends Dispatcher {
         this.monitorPacketsServer();
     }
 
+    /**
+     * Ecoute tous les evenements en rapport avec l'user même
+     */
     private monitorPacketsUser() {
         this.wrapperUser = this.wrap();
         // Mon user vient de se deconnecter
@@ -43,6 +51,9 @@ export class User extends Dispatcher {
         });
     }
 
+    /**
+     * Ecoute tous les evenements en rapport avec le server
+     */
     private monitorPacketsServer() {
         this.wrapperServer = this.server.wrap();
         this.wrapperServer.on('event::UserDisconnectedMessage', (event: UserDisconnectedMessage) => {
