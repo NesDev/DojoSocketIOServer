@@ -1,7 +1,7 @@
 import {Server} from "@server/src/core";
 import SocketManager from "@server/src/core/utils/socket";
 import {Dispatcher} from "@server/src/core/utils/events/dispatcher";
-import {UserInformations} from "@server/src/core/user/userInformations";
+import {UserInformations} from "@server/src/core/models/types/userInformations";
 import {EventWrapper} from "@server/src/core/utils/events/eventWrapper";
 import {UserDisconnectedMessage} from "@server/src/core/models/packets/UserDisconnectedMessage";
 

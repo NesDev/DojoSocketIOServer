@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "module": "commonjs",
     "moduleResolution": "node",
@@ -7,7 +8,9 @@
     "baseUrl": ".",
     "sourceMap": true,
     "paths": {
-      "@server/*": [ "./*" ]
+      "@server/*": [
+        "./*"
+      ]
     }
   }
 }

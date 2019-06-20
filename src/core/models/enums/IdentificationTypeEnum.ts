@@ -1,3 +1,3 @@
-export class IdentificationTypeEnum {
+export enum IdentificationTypeEnum {
     CLIENT = "CLIENT"
 }
