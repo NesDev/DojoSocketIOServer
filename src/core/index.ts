@@ -1,14 +1,16 @@
-import { Dispatcher } from '@server/src/core/utils/events/dispatcher';
-import { User } from '@server/src/core/user';
+import {Dispatcher} from '@server/src/core/utils/events/dispatcher';
+import {User} from '@server/src/core/user';
 import SocketManager from '@server/src/core/utils/socket';
 import * as SocketIO from 'socket.io';
-import { IdentificationRequestMessage } from '@server/src/core/models/packets/IdentificationRequestMessage';
-import { IdentificationSucessMessage } from '@server/src/core/models/packets/IdentificationSucessMessage';
-import { IdentificationFailedMessage } from '@server/src/core/models/packets/IdentificationFailedMessage';
-import { UserInformations } from '@server/src/core/models/types/userInformations';
-import { CreateUserRequestMessage } from '@server/src/core/models/packets/CreateUserRequestMessage';
-import { IdentificationFailedReasonEnum } from '@server/src/core/models/enums/IdentificationFailedReasonEnum';
-import { IdentificationTypeEnum } from '@server/src/core/models/enums/IdentificationTypeEnum';
+import {IdentificationRequestMessage} from '@server/src/core/models/packets/IdentificationRequestMessage';
+import {IdentificationSucessMessage} from '@server/src/core/models/packets/IdentificationSucessMessage';
+import {IdentificationFailedMessage} from '@server/src/core/models/packets/IdentificationFailedMessage';
+import {UserInformations} from '@server/src/core/models/types/userInformations';
+import {CreateAccountRequestMessage} from '@server/src/core/models/packets/CreateAccountRequestMessage';
+import {IdentificationFailedReasonEnum} from '@server/src/core/models/enums/IdentificationFailedReasonEnum';
+import {IdentificationTypeEnum} from '@server/src/core/models/enums/IdentificationTypeEnum';
+import {CreateAccountErrorMessage} from "@server/src/core/models/packets/CreateAccountErrorMessage";
+import {CreateAccountSuccesMessage} from "@server/src/core/models/packets/CreateAccountSuccesMessage";
 
 const log = require('debug')('server');
 
@@ -41,9 +43,10 @@ export class Server extends Dispatcher {
                         const userInformations = this.usersInformations.find((elt) => elt.login === packet.login);
                         if (userInformations) {
                             if (userInformations.password === packet.password) {
-                                const userManager = new User(this, socket, userInformations);
-                                this.users.push(userManager);
+                                const user = new User(this, socket, userInformations)
+                                this.users.push(user);
                                 this.sendIdentificationSucessMessage(socket, userInformations);
+                                user.init();
                             } else {
                                 this.sendIdentificationFailedMessage(socket, IdentificationFailedReasonEnum.WRONG_PASSWORD);
                             }
@@ -53,11 +56,18 @@ export class Server extends Dispatcher {
                         break;
                 }
             });
-            wrapper.on('packet::CreateUserRequestMessage', async (packet: CreateUserRequestMessage) => {
-                this.usersInformations.push({
-                    login: packet.login,
-                    password: packet.password
-                } as UserInformations);
+            wrapper.on('packet::CreateAccountRequestMessage', async (packet: CreateAccountRequestMessage) => {
+                if (this.usersInformations.findIndex((elt) => elt.login === packet.login) === -1) {
+                    const userInformations = new UserInformations(packet.login, packet.password);
+                    this.addUser(userInformations);
+                    const user = new User(this, socket, userInformations);
+                    this.users.push(user);
+                    this.sendIdentificationSucessMessage(socket, userInformations);
+                    socket.send("CreateAccountSuccesMessage", {userInformations: userInformations} as CreateAccountSuccesMessage);
+                    user.init();
+                } else {
+                    socket.send("CreateAccountErrorMessage", {reason: "Login exist !"} as CreateAccountErrorMessage);
+                }
             });
             wrapper.on('socket::disconnected', () => {
                 log("Deconnection d'un socket, clients : " + Object.keys(this.socketServer.sockets.sockets).length);
@@ -73,6 +83,7 @@ export class Server extends Dispatcher {
         socket.send('IdentificationSucessMessage', {
             userInformations
         } as IdentificationSucessMessage);
+
     }
 
     private sendIdentificationFailedMessage(socket: SocketManager, reason: IdentificationFailedReasonEnum) {
@@ -80,6 +91,9 @@ export class Server extends Dispatcher {
         socket.send('IdentificationFailedMessage', {
             reason: reason
         } as IdentificationFailedMessage);
-        socket.disconnect('IdentificationFailedMessage : ' + reason);
+    }
+
+    private addUser(userInformations: UserInformations) {
+        this.usersInformations.push(userInformations);
     }
 }

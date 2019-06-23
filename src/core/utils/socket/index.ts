@@ -12,70 +12,17 @@ const
 export default class SocketManager extends Dispatcher {
     // Le socket Initial
     public socket: any = null;
-    // Pour savoir si le socket est connecté ou non
-    private connected: boolean = false;
     // Pour savoir si on dois afficher tous les logs ou non
     public debug: boolean = true;
     public log: boolean = true;
     // Les differents dispatcher ou transmettre les informations concernant ce socket
-    public dispatchers: Dispatcher[] =[];
+    public dispatchers: Dispatcher[] = [];
+    // Pour savoir si le socket est connecté ou non
+    private connected: boolean = false;
 
     constructor(socket: any) {
         super();
         if (socket) this.setSocket(socket);
-    }
-
-    private setSocket(socket: any) {
-        this.socket = socket;
-        let wrapper = new EventWrapper(this.socket)
-            // Quand le socket se connecte
-            .on(['open', 'connect'], () => {
-                this.connected = true;
-                log('Connected');
-                this.emitToDispatchers('socket::connected');
-            })
-            // Quand le socket reçoi des données
-            .on('data', packet => {
-                if (this.debug) logPacket(`RCV %s (%o).`, packet.call, packet.data);
-                else if (this.log) logPacket(`RCV %s.`, packet.data);
-                this.emitToDispatchers('packet::all', packet.data);
-                this.emitToDispatchers(`packet::${packet.call}`, packet.data);
-            })
-            // Quand le socket se reconnect
-            .on('reconnect', attempt => {
-                log(`Reconnecting... (%d).`, attempt);
-            })
-            // Quand le socket reçoi une erreur
-            .on('error', e => {
-                log("An error has occured (%o).", e);
-                wrapper.done("Error: " + e);
-                this.emitToDispatchers('socket::error', e);
-            })
-            // Quand le socket se ferme totalement
-            .on('close', () => {
-                this.connected = false;
-                log("Server's connection lost.");
-                this.emitToDispatchers('socket::close');
-            })
-            // Quand le socket se déconnecte
-            .on(['end', 'disconnect'], () => {
-                wrapper.done();
-                log("Socket disconnected.");
-                this.emitToDispatchers('socket::disconnected');
-                this.destroy();
-            })
-    }
-
-    /**
-     * Emit un packet sur tous les dispatcher
-     * @param callName
-     * @param data
-     */
-    private emitToDispatchers(callName: string, data?: any) {
-        this.emit(callName,data);
-        for (let elt of this.dispatchers) {
-            elt.emit(callName, data);
-        }
     }
 
     /**
@@ -123,5 +70,58 @@ export default class SocketManager extends Dispatcher {
      */
     public getIp(): string {
         return this.socket.request.connection.remoteAddress.replace("::ffff:", "");
+    }
+
+    private setSocket(socket: any) {
+        this.socket = socket;
+        let wrapper = new EventWrapper(this.socket)
+        // Quand le socket se connecte
+            .on(['open', 'connect'], () => {
+                this.connected = true;
+                log('Connected');
+                this.emitToDispatchers('socket::connected');
+            })
+            // Quand le socket reçoi des données
+            .on('data', packet => {
+                if (this.debug) logPacket(`RCV %s (%o).`, packet.call, packet.data);
+                else if (this.log) logPacket(`RCV %s.`, packet.data);
+                this.emitToDispatchers('packet::all', packet.data);
+                this.emitToDispatchers(`packet::${packet.call}`, packet.data);
+            })
+            // Quand le socket se reconnect
+            .on('reconnect', attempt => {
+                log(`Reconnecting... (%d).`, attempt);
+            })
+            // Quand le socket reçoi une erreur
+            .on('error', e => {
+                log("An error has occured (%o).", e);
+                wrapper.done("Error: " + e);
+                this.emitToDispatchers('socket::error', e);
+            })
+            // Quand le socket se ferme totalement
+            .on('close', () => {
+                this.connected = false;
+                log("Server's connection lost.");
+                this.emitToDispatchers('socket::close');
+            })
+            // Quand le socket se déconnecte
+            .on(['end', 'disconnect'], () => {
+                wrapper.done();
+                log("Socket disconnected.");
+                this.emitToDispatchers('socket::disconnected');
+                this.destroy();
+            })
+    }
+
+    /**
+     * Emit un packet sur tous les dispatcher
+     * @param callName
+     * @param data
+     */
+    private emitToDispatchers(callName: string, data?: any) {
+        this.emit(callName, data);
+        for (let elt of this.dispatchers) {
+            elt.emit(callName, data);
+        }
     }
 }

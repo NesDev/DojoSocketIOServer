@@ -4,4 +4,4 @@ import {Server} from "@server/src/core";
 
 const server = new Server();
 
-server.init();
+server.init(); 

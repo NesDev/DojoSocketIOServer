@@ -1,5 +1,5 @@
 import {EventEmitter} from "events";
-import {Dispatcher} from "@common/utils/events/dispatcher";
+import {Dispatcher} from "@server/src/core/utils/events/dispatcher";
 
 export class EventWrapper {
     private eventEmitter: EventEmitter;

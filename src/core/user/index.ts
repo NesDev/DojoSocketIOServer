@@ -4,6 +4,8 @@ import {Dispatcher} from "@server/src/core/utils/events/dispatcher";
 import {UserInformations} from "@server/src/core/models/types/userInformations";
 import {EventWrapper} from "@server/src/core/utils/events/eventWrapper";
 import {UserDisconnectedMessage} from "@server/src/core/models/packets/UserDisconnectedMessage";
+import {ServerInformationsMessage} from "@server/src/core/models/packets/ServerInformationsMessage";
+import {UserConnectedMessage} from "@server/src/core/models/packets/UserConnectedMessage";
 
 /**
  * Classe permettant de gérer toute les actions/informations d'un utilisateur connecté
@@ -28,6 +30,25 @@ export class User extends Dispatcher {
         this.socket.dispatchers.push(this);
         this.monitorPacketsUser();
         this.monitorPacketsServer();
+    }
+
+    init() {
+        this.sendServerInformations();
+        this.server.emit("event::UserConnectedMessage", {
+            userInformations: this.userInformations
+        } as UserConnectedMessage)
+    }
+
+    public sendServerInformations() {
+        const infos = new ServerInformationsMessage();
+        infos.users = [];
+        for (const user of this.server.users) {
+            const userInfos = this.server.usersInformations.find((elt) => elt.login === user.userInformations.login);
+            if (userInfos) {
+                infos.users.push(userInfos);
+            }
+        }
+        this.socket.send("ServerInformationsMessage", infos);
     }
 
     /**
@@ -57,7 +78,14 @@ export class User extends Dispatcher {
     private monitorPacketsServer() {
         this.wrapperServer = this.server.wrap();
         this.wrapperServer.on('event::UserDisconnectedMessage', (event: UserDisconnectedMessage) => {
-            this.socket.send('packet::UserDisconnectedMessage', event);
+            this.socket.send('UserDisconnectedMessage', event);
+        });
+        this.wrapperServer.on('event::UserConnectedMessage', (event: UserDisconnectedMessage) => {
+            if (event.login !== this.userInformations.login) {
+                this.socket.send('UserConnectedMessage', event);
+            }
         })
     }
+
+
 }
