@@ -1,16 +1,21 @@
-import {Dispatcher} from '@server/src/core/utils/events/dispatcher';
-import {User} from '@server/src/core/user';
+import { Dispatcher } from '@server/src/core/utils/events/dispatcher';
+import { User } from '@server/src/core/user';
 import SocketManager from '@server/src/core/utils/socket';
 import * as SocketIO from 'socket.io';
-import {IdentificationRequestMessage} from '@server/src/core/models/packets/IdentificationRequestMessage';
-import {IdentificationSucessMessage} from '@server/src/core/models/packets/IdentificationSucessMessage';
-import {IdentificationFailedMessage} from '@server/src/core/models/packets/IdentificationFailedMessage';
-import {UserInformations} from '@server/src/core/models/types/userInformations';
-import {CreateAccountRequestMessage} from '@server/src/core/models/packets/CreateAccountRequestMessage';
-import {IdentificationFailedReasonEnum} from '@server/src/core/models/enums/IdentificationFailedReasonEnum';
-import {IdentificationTypeEnum} from '@server/src/core/models/enums/IdentificationTypeEnum';
-import {CreateAccountErrorMessage} from "@server/src/core/models/packets/CreateAccountErrorMessage";
-import {CreateAccountSuccesMessage} from "@server/src/core/models/packets/CreateAccountSuccesMessage";
+import { IdentificationRequestMessage } from '@server/src/core/models/packets/IdentificationRequestMessage';
+import { IdentificationSucessMessage } from '@server/src/core/models/packets/IdentificationSucessMessage';
+import { IdentificationFailedMessage } from '@server/src/core/models/packets/IdentificationFailedMessage';
+import { UserInformations } from '@server/src/core/models/types/userInformations';
+import { CreateAccountRequestMessage } from '@server/src/core/models/packets/CreateAccountRequestMessage';
+import { IdentificationFailedReasonEnum } from '@server/src/core/models/enums/IdentificationFailedReasonEnum';
+import { IdentificationTypeEnum } from '@server/src/core/models/enums/IdentificationTypeEnum';
+import { CreateAccountErrorMessage } from "@server/src/core/models/packets/CreateAccountErrorMessage";
+import { CreateAccountSuccesMessage } from "@server/src/core/models/packets/CreateAccountSuccesMessage";
+import { CustomLog } from '@server/src/core/models/types/custom-log';
+import { NewLogMessage } from '@server/src/core/models/packets/newLogMessage';
+import * as fs from 'fs';
+import { ServerInformationsMessage } from '@server/src/core/models/packets/ServerInformationsMessage';
+import { UserInformationsUpdated } from '@server/src/core/models/packets/UserInformationsUpdated';
 
 const log = require('debug')('server');
 
@@ -18,6 +23,7 @@ export class Server extends Dispatcher {
     public socketServer: SocketIO.Server = SocketIO();
     public users: User[] = [];
     public usersInformations: UserInformations[] = [];
+    public logs: CustomLog[] = [];
 
     constructor() {
         super();
@@ -25,9 +31,38 @@ export class Server extends Dispatcher {
 
     public init(): Promise<boolean> {
         return new Promise<boolean>(async (resolve, reject) => {
+            this.loadDatas();
             this.initServer();
+            this.monitorPackets();
             return resolve(true);
         });
+    }
+
+
+    public monitorPackets() {
+        const wrapper = this.wrap();
+        wrapper.on("event::NewLogMessage", (event: NewLogMessage) => {
+            this.logs.push(event.log);
+            this.saveDatas();
+        });
+        wrapper.on("event::UserInformationsUpdated", (event: UserInformationsUpdated) => {
+            this.saveDatas();
+        })
+    }
+
+    public loadDatas() {
+        if (fs.existsSync("data.json")) {
+            const infos: ServerInformationsMessage = JSON.parse(fs.readFileSync("data.json", 'utf8'));
+            this.logs = infos.logs;
+            this.usersInformations = infos.users;
+        }
+    }
+
+    public saveDatas() {
+        const infos: ServerInformationsMessage = new ServerInformationsMessage();
+        infos.logs = this.logs;
+        infos.users = this.usersInformations;
+        fs.writeFileSync("data.json", JSON.stringify(infos), 'utf8');
     }
 
     private initServer() {
@@ -43,7 +78,7 @@ export class Server extends Dispatcher {
                         const userInformations = this.usersInformations.find((elt) => elt.login === packet.login);
                         if (userInformations) {
                             if (userInformations.password === packet.password) {
-                                const user = new User(this, socket, userInformations)
+                                const user = new User(this, socket, userInformations);
                                 this.users.push(user);
                                 this.sendIdentificationSucessMessage(socket, userInformations);
                                 user.init();
@@ -63,10 +98,10 @@ export class Server extends Dispatcher {
                     const user = new User(this, socket, userInformations);
                     this.users.push(user);
                     this.sendIdentificationSucessMessage(socket, userInformations);
-                    socket.send("CreateAccountSuccesMessage", {userInformations: userInformations} as CreateAccountSuccesMessage);
+                    socket.send("CreateAccountSuccesMessage", { userInformations: userInformations } as CreateAccountSuccesMessage);
                     user.init();
                 } else {
-                    socket.send("CreateAccountErrorMessage", {reason: "Login exist !"} as CreateAccountErrorMessage);
+                    socket.send("CreateAccountErrorMessage", { reason: "Login exist !" } as CreateAccountErrorMessage);
                 }
             });
             wrapper.on('socket::disconnected', () => {
@@ -76,7 +111,6 @@ export class Server extends Dispatcher {
         });
         this.socketServer.listen(8001);
     }
-
 
     private sendIdentificationSucessMessage(socket: SocketManager, userInformations: UserInformations) {
         log('IdentificationSucessMessage : ', userInformations);
@@ -95,5 +129,6 @@ export class Server extends Dispatcher {
 
     private addUser(userInformations: UserInformations) {
         this.usersInformations.push(userInformations);
+        this.saveDatas();
     }
 }

@@ -8,6 +8,7 @@
     "@types/mongodb": "^3.1.9",
     "debug": "^4.1.0",
     "module-alias": "^2.1.0",
+    "moment": "^2.24.0",
     "socket.io": "^2.2.0"
   },
   "devDependencies": {

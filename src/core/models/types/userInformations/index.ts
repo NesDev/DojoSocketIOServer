@@ -1,7 +1,7 @@
 /**
  * Informations d'un utilisateur
  */
-import {IdentificationTypeEnum} from "@server/src/core/models/enums/IdentificationTypeEnum";
+import { IdentificationTypeEnum } from "@server/src/core/models/enums/IdentificationTypeEnum";
 
 export class UserInformations {
     public login: string;
@@ -18,7 +18,7 @@ export class UserInformations {
         this.name = login;
         this.type = IdentificationTypeEnum.CLIENT;
         this.weight = 1;
-        this.size = 24;
+        this.size = 15;
         this.color = 'black';
     }
 }
