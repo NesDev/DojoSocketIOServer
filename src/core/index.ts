@@ -109,7 +109,7 @@ export class Server extends Dispatcher {
                 wrapper.done();
             });
         });
-        this.socketServer.listen(8001);
+        this.socketServer.listen(8002);
     }
 
     private sendIdentificationSucessMessage(socket: SocketManager, userInformations: UserInformations) {
