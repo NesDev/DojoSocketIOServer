@@ -9,13 +9,14 @@ import { UserInformations } from '@server/src/core/models/types/userInformations
 import { CreateAccountRequestMessage } from '@server/src/core/models/packets/CreateAccountRequestMessage';
 import { IdentificationFailedReasonEnum } from '@server/src/core/models/enums/IdentificationFailedReasonEnum';
 import { IdentificationTypeEnum } from '@server/src/core/models/enums/IdentificationTypeEnum';
-import { CreateAccountErrorMessage } from "@server/src/core/models/packets/CreateAccountErrorMessage";
-import { CreateAccountSuccesMessage } from "@server/src/core/models/packets/CreateAccountSuccesMessage";
+import { CreateAccountErrorMessage } from '@server/src/core/models/packets/CreateAccountErrorMessage';
+import { CreateAccountSuccesMessage } from '@server/src/core/models/packets/CreateAccountSuccesMessage';
 import { CustomLog } from '@server/src/core/models/types/custom-log';
 import { NewLogMessage } from '@server/src/core/models/packets/newLogMessage';
 import * as fs from 'fs';
 import { ServerInformationsMessage } from '@server/src/core/models/packets/ServerInformationsMessage';
 import { UserInformationsUpdated } from '@server/src/core/models/packets/UserInformationsUpdated';
+import { BackgroundChangedMessage } from '@server/src/core/models/packets/BackgroundChangedMessage';
 
 const log = require('debug')('server');
 
@@ -24,6 +25,7 @@ export class Server extends Dispatcher {
     public users: User[] = [];
     public usersInformations: UserInformations[] = [];
     public logs: CustomLog[] = [];
+    public colorTchat: string = 'white';
 
     constructor() {
         super();
@@ -41,19 +43,24 @@ export class Server extends Dispatcher {
 
     public monitorPackets() {
         const wrapper = this.wrap();
-        wrapper.on("event::NewLogMessage", (event: NewLogMessage) => {
+        wrapper.on('event::NewLogMessage', (event: NewLogMessage) => {
             this.logs.push(event.log);
             this.saveDatas();
         });
-        wrapper.on("event::UserInformationsUpdated", (event: UserInformationsUpdated) => {
+        wrapper.on('event::UserInformationsUpdated', (event: UserInformationsUpdated) => {
             this.saveDatas();
-        })
+        });
+        wrapper.on('event::BackgroundChangedMessage', (event: BackgroundChangedMessage) => {
+            this.colorTchat = event.newColor;
+            this.saveDatas();
+        });
     }
 
     public loadDatas() {
-        if (fs.existsSync("data.json")) {
-            const infos: ServerInformationsMessage = JSON.parse(fs.readFileSync("data.json", 'utf8'));
+        if (fs.existsSync('data.json')) {
+            const infos: ServerInformationsMessage = JSON.parse(fs.readFileSync('data.json', 'utf8'));
             this.logs = infos.logs;
+            this.colorTchat = infos.colorTchat;
             this.usersInformations = infos.users;
         }
     }
@@ -62,7 +69,8 @@ export class Server extends Dispatcher {
         const infos: ServerInformationsMessage = new ServerInformationsMessage();
         infos.logs = this.logs;
         infos.users = this.usersInformations;
-        fs.writeFileSync("data.json", JSON.stringify(infos), 'utf8');
+        infos.colorTchat = this.colorTchat;
+        fs.writeFileSync('data.json', JSON.stringify(infos), 'utf8');
     }
 
     private initServer() {
@@ -72,7 +80,7 @@ export class Server extends Dispatcher {
             log(`Tentative de connexion.. IP : ` + socket.getIp() + ' clients : ' + Object.keys(this.socketServer.sockets.sockets).length);
             const wrapper = socket.wrap();
             wrapper.on('packet::IdentificationRequestMessage', async (packet: IdentificationRequestMessage) => {
-                log(`Identification reçu : ` + JSON.stringify(packet));
+                log(`Identification reçu :  ` + socket.getIp() + ' ' + JSON.stringify(packet));
                 switch (packet.type) {
                     case IdentificationTypeEnum.CLIENT:
                         const userInformations = this.usersInformations.find((elt) => elt.login === packet.login);
@@ -98,14 +106,14 @@ export class Server extends Dispatcher {
                     const user = new User(this, socket, userInformations);
                     this.users.push(user);
                     this.sendIdentificationSucessMessage(socket, userInformations);
-                    socket.send("CreateAccountSuccesMessage", { userInformations: userInformations } as CreateAccountSuccesMessage);
+                    socket.send('CreateAccountSuccesMessage', { userInformations: userInformations } as CreateAccountSuccesMessage);
                     user.init();
                 } else {
-                    socket.send("CreateAccountErrorMessage", { reason: "Login exist !" } as CreateAccountErrorMessage);
+                    socket.send('CreateAccountErrorMessage', { reason: 'Login exist !' } as CreateAccountErrorMessage);
                 }
             });
             wrapper.on('socket::disconnected', () => {
-                log("Deconnection d'un socket, clients : " + Object.keys(this.socketServer.sockets.sockets).length);
+                log('Deconnection d\'un socket, clients : ' + Object.keys(this.socketServer.sockets.sockets).length);
                 wrapper.done();
             });
         });
